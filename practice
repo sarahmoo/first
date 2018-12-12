@@ -1,0 +1,66 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Data.SqlClient;// allows database connection
+using System.Configuration;
+using System.Threading.Tasks;
+using System.Text;
+using System.Security.Cryptography; // allows encryption syntax
+
+
+
+public partial class LogIn : System.Web.UI.Page
+{
+    static string Encrypt(string value) // static class for encryption, passes value through it
+    {
+        using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider()) // computes the md5 hash value for the input data and initializes a new instance
+
+        {
+            UTF8Encoding utf8 = new UTF8Encoding(); //new utf-8 encoding of unicde characters, uses one to four 8-bit bytes
+            byte[] data = md5.ComputeHash(utf8.GetBytes(value)); // creates the variable data by creating the hash value for 'value' into a sequence of bytes
+            return Convert.ToBase64String(data); // returns the new version of the password to a base 64 digits string
+        }
+
+    }
+    protected void Page_Load(object sender, EventArgs e)
+    {
+        ValidationSettings.UnobtrusiveValidationMode = UnobtrusiveValidationMode.None; //  doesn't enable unobtrusive valitation, disables the validator from validating any control and using Client side validation
+    }
+
+    protected void Button_Login_Click(object sender, EventArgs e) // if the submit button is clicked on
+    {
+        SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["ConnectionStringReg"].ConnectionString); // connects with the specified connection string
+        conn.Open(); // opens connection
+        string checkuser = "select count(*) from UserData where UserName ='" + UserName.Text + "'"; //checks the username against all the data in the userdata database where the column is username
+        SqlCommand com = new SqlCommand(checkuser, conn); // initializes check user
+        int temp = Convert.ToInt32(com.ExecuteScalar().ToString());
+        conn.Close(); // closes connection
+        if (temp == 1) // if the username exists
+        {
+            conn.Open(); // open connection
+            string checkPassword = "select password from UserData where UserName ='" + UserName.Text + "'"; // checks password where username equals the username in the textbox
+            SqlCommand passComm = new SqlCommand(checkPassword, conn);
+            string password = passComm.ExecuteScalar().ToString().Replace(" ",""); // replaces any accidental spaces in the textboc
+            if (password==Encrypt(Password.Text)) // if the database password is equal to the encrypted version of the user password input into the text box
+            {
+                Session["New"] = UserName.Text; // prepares username to be passed through webpages
+               
+                Response.Write("Password is correct!");
+                Response.Redirect("Users.aspx"); // redirects the user page
+            }
+            else // if not
+            {
+                Response.Write("Password is not correct!"); // writes that the password is wrong
+            }
+            conn.Close();// close the connection
+        }
+        else // if username not there..
+        {
+            Response.Write("Username is not correct."); // ..writes that it's incorrect
+        }
+       
+    }
+}
